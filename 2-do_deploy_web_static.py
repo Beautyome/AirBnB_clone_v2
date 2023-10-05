@@ -6,6 +6,8 @@ Deploy files to remote server using Fabric
 from fabric.api import env, put, run
 import os.path
 env.hosts = ['3.90.80.254', '54.174.136.222']
+env.user = 'ubuntu'
+env.key_filename = '~/.ssh/id_rsa'
 
 
 def do_deploy(archive_path):
