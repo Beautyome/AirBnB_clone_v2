@@ -1,87 +1,64 @@
-# Puppet for setup
+$default_site_loc = '/etc/nginx/sites-available/default'
+$default_site = 'https://raw.githubusercontent.com/beautyome/AirBnB_clone_v2/master/config/default-site'
+$directory1 = '/data/web_static/releases/test/'
+$directory2 = '/data/web_static/shared/'
+$link = '/data/web_static/current'
 
-$nginx_conf = "server {
-    listen 80 default_server;
-    listen [::]:80 default_server;
-    add_header X-Served-By ${hostname};
-    root   /var/www/html;
-    index  index.html index.htm;
-    location /hbnb_static {
-        alias /data/web_static/current;
-        index index.html index.htm;
-    }
-    location /redirect_me {
-        return 301 http://linktr.ee/firdaus_h_salim/;
-    }
-    error_page 404 /404.html;
-    location /404 {
-      root /var/www/html;
-      internal;
-    }
-}"
+# Run apt-get update
+exec { 'apt-update':
+  command => '/usr/bin/apt-get update',
+  user    => root,
+}
 
+# Install nginx
 package { 'nginx':
-  ensure   => 'present',
-  provider => 'apt'
+  ensure  => installed,
+  require => Exec['apt-update'],
+  user    => root,
 }
 
--> file { '/data':
-  ensure  => 'directory'
+# Create directories
+exec { 'create-dirs':
+  require => Package['nginx'],
+  command => "/usr/bin/mkdir -p ${directory1} ${directory2}",
+  user    => root,
 }
 
--> file { '/data/web_static':
-  ensure => 'directory'
+# Create index.html
+file {'create-index.html':
+  require => Exec['create-dirs'],
+  path    => '/data/web_static/releases/test/index.html',
+  content => '<h1>Hello this is puppet master!!!<h1/>',
+  user    => root,
 }
 
--> file { '/data/web_static/releases':
-  ensure => 'directory'
+# Create symbolic link
+exec {'symlink':
+  require => File['create-index.html'],
+  command => "$/usr/bin/ln -sf ${directory1} ${link}",
+  user    => root,
 }
 
--> file { '/data/web_static/releases/test':
-  ensure => 'directory'
+# Change owner
+exec {'chown':
+  require => Exec['symlink'],
+  command => "$/usr/bin/chown -hR ubuntu:ubuntu /data/",
+  user    => root,
 }
 
--> file { '/data/web_static/shared':
-  ensure => 'directory'
+# Replace default site config
+file { '/etc/nginx/sites-available/default':
+  ensure  => file,
+  require => Package['nginx'],
+  user    => root,
+}-> exec { 'Replace config':
+  command => "/usr/bin/curl ${default_site} > ${default_site_loc}",
+  user    => root,
 }
 
--> file { '/data/web_static/releases/test/index.html':
-  ensure  => 'present',
-  content => "this webpage is found in data/web_static/releases/test/index.htm \n"
-}
-
--> file { '/data/web_static/current':
-  ensure => 'link',
-  target => '/data/web_static/releases/test'
-}
-
--> exec { 'chown -R ubuntu:ubuntu /data/':
-  path => '/usr/bin/:/usr/local/bin/:/bin/'
-}
-
-file { '/var/www':
-  ensure => 'directory'
-}
-
--> file { '/var/www/html':
-  ensure => 'directory'
-}
-
--> file { '/var/www/html/index.html':
-  ensure  => 'present',
-  content => "This is my first upload  in /var/www/index.html***\n"
-}
-
--> file { '/var/www/html/404.html':
-  ensure  => 'present',
-  content => "Ceci n'est pas une page - Error page\n"
-}
-
--> file { '/etc/nginx/sites-available/default':
-  ensure  => 'present',
-  content => $nginx_conf
-}
-
--> exec { 'nginx restart':
-  path => '/etc/init.d/'
+# Start nginx 
+service {'nginx':
+  ensure  => running,
+  require => Exec['Replace config'],
+  user    => root,
 }
