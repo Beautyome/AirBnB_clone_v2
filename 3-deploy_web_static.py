@@ -6,7 +6,7 @@ Deploy files to remote server using Fabric
 from fabric.api import env, put, run, local
 import os.path
 from time import strftime
-env.hosts = ['web1.osala.tech', 'web2.osala.tech']
+env.hosts = ['web1.beautyome.tech', 'web2.beautyome.tech']
 
 
 def do_pack():
